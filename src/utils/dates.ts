@@ -1,32 +1,52 @@
-export const dates = {
-  // Date utility functions
+import { eachDayOfInterval, endOfMonth, format, startOfMonth } from "date-fns";
 
-  getDayOfMonth(date: Date = new Date()): number {
-    return date.getDate();
-  },
+/**
+ * Get the number of days in a given month.
+ */
+export function getDaysInMonth(year: number, month: number): number {
+  return new Date(year, month + 1, 0).getDate();
+}
 
-  getMonthYear(date: Date = new Date()): string {
-    return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
-  },
+/**
+ * Get month label (e.g., "January 2026").
+ */
+export function getMonthLabel(year: number, month: number): string {
+  const date = new Date(year, month, 1);
+  return format(date, "MMMM yyyy");
+}
 
-  getFirstDayOfMonth(date: Date = new Date()): Date {
-    return new Date(date.getFullYear(), date.getMonth(), 1);
-  },
+/**
+ * Get all day numbers for a month (1..28/29/30/31).
+ */
+export function getDaysOfMonth(year: number, month: number): number[] {
+  const start = startOfMonth(new Date(year, month, 1));
+  const end = endOfMonth(start);
+  const days = eachDayOfInterval({ start, end });
+  return days.map((d) => d.getDate());
+}
 
-  getLastDayOfMonth(date: Date = new Date()): Date {
-    return new Date(date.getFullYear(), date.getMonth() + 1, 0);
-  },
+/**
+ * Format a date as YYYY-MM-DD.
+ */
+export function formatDateKey(
+  year: number,
+  month: number,
+  day: number
+): string {
+  const date = new Date(year, month, day);
+  const yyyy = date.getFullYear().toString().padStart(4, "0");
+  const mm = (date.getMonth() + 1).toString().padStart(2, "0");
+  const dd = date.getDate().toString().padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
 
-  getDaysInMonth(date: Date = new Date()): number {
-    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-  },
-
-  isToday(date: Date): boolean {
-    const today = new Date();
-    return (
-      date.getDate() === today.getDate() &&
-      date.getMonth() === today.getMonth() &&
-      date.getFullYear() === today.getFullYear()
-    );
-  },
-};
+/**
+ * Get current year and month.
+ */
+export function getCurrentMonthInfo(): { year: number; month: number } {
+  const now = new Date();
+  return {
+    year: now.getFullYear(),
+    month: now.getMonth(),
+  };
+}

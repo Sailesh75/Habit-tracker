@@ -1,42 +1,66 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { CellStatus, Habit } from "../store/habitsStore";
 
-const HABITS_KEY = "habits";
-const TRACKING_DATA_KEY = "tracking_data";
+const HABITS_KEY = "habits:v1";
+const ENTRIES_KEY = "entries:v1";
 
 export const storage = {
-  async getHabits() {
+  async loadHabits(): Promise<Habit[]> {
     try {
       const data = await AsyncStorage.getItem(HABITS_KEY);
       return data ? JSON.parse(data) : [];
     } catch (error) {
-      console.error("Error reading habits:", error);
+      console.error("Failed to load habits:", error);
       return [];
     }
   },
 
-  async saveHabits(habits: any) {
+  async saveHabits(habits: Habit[]): Promise<void> {
     try {
       await AsyncStorage.setItem(HABITS_KEY, JSON.stringify(habits));
     } catch (error) {
-      console.error("Error saving habits:", error);
+      console.error("Failed to save habits:", error);
     }
   },
 
-  async getTrackingData() {
+  async loadEntries(): Promise<Record<string, CellStatus>> {
     try {
-      const data = await AsyncStorage.getItem(TRACKING_DATA_KEY);
+      const data = await AsyncStorage.getItem(ENTRIES_KEY);
       return data ? JSON.parse(data) : {};
     } catch (error) {
-      console.error("Error reading tracking data:", error);
+      console.error("Failed to load entries:", error);
       return {};
     }
   },
 
-  async saveTrackingData(data: any) {
+  async saveEntries(entries: Record<string, CellStatus>): Promise<void> {
     try {
-      await AsyncStorage.setItem(TRACKING_DATA_KEY, JSON.stringify(data));
+      await AsyncStorage.setItem(ENTRIES_KEY, JSON.stringify(entries));
     } catch (error) {
-      console.error("Error saving tracking data:", error);
+      console.error("Failed to save entries:", error);
+    }
+  },
+
+  async saveEntry(
+    dateStr: string,
+    habitId: string,
+    status: CellStatus
+  ): Promise<void> {
+    try {
+      const key = `${dateStr}::${habitId}`;
+      const entries = await this.loadEntries();
+      entries[key] = status;
+      await this.saveEntries(entries);
+    } catch (error) {
+      console.error("Failed to save entry:", error);
+    }
+  },
+
+  async clear(): Promise<void> {
+    try {
+      await AsyncStorage.multiRemove([HABITS_KEY, ENTRIES_KEY]);
+    } catch (error) {
+      console.error("Failed to clear storage:", error);
     }
   },
 };

@@ -1,98 +1,153 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { DayRow } from "@/src/components/DayRow";
+import { HabitHeader } from "@/src/components/HabitHeader";
+import { storage } from "@/src/storage/storage";
+import { useHabitsStore } from "@/src/store/habitsStore";
+import {
+  formatDateKey,
+  getCurrentMonthInfo,
+  getDaysInMonth,
+  getMonthLabel,
+} from "@/src/utils/dates";
+import { useFocusEffect } from "@react-navigation/native";
+import React, { useState } from "react";
+import {
+  ActivityIndicator,
+  FlatList,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+const CELL_SIZE = 40;
+const DAY_COLUMN_WIDTH = 45;
 
-export default function HomeScreen() {
+export default function GridScreen() {
+  const {
+    habits,
+    entries,
+    isHydrated,
+    setHydrated,
+    setHabits,
+    setEntries,
+    toggleCell,
+  } = useHabitsStore();
+  const [yearMonth] = useState(getCurrentMonthInfo());
+
+  // Hydrate store on first mount
+  useFocusEffect(
+    React.useCallback(() => {
+      if (!isHydrated) {
+        (async () => {
+          const loadedHabits = await storage.loadHabits();
+          const loadedEntries = await storage.loadEntries();
+          setHabits(loadedHabits);
+          setEntries(loadedEntries);
+          setHydrated(true);
+        })();
+      }
+    }, [isHydrated, setHabits, setEntries, setHydrated])
+  );
+
+  if (!isHydrated) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#0000ff" />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (habits.length === 0) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>No habits yet!</Text>
+          <Text style={styles.emptySubText}>
+            Go to the Habits tab to create some.
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const daysInMonth = getDaysInMonth(yearMonth.year, yearMonth.month);
+  const monthLabel = getMonthLabel(yearMonth.year, yearMonth.month);
+
+  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <SafeAreaView style={styles.container}>
+      <Text style={styles.monthLabel}>{monthLabel}</Text>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      {/* Header row with habit names */}
+      <HabitHeader
+        habits={habits}
+        cellSize={CELL_SIZE}
+        dayColumnWidth={DAY_COLUMN_WIDTH}
+      />
+
+      {/* Days list */}
+      <FlatList
+        data={days}
+        keyExtractor={(day) => day.toString()}
+        renderItem={({ item: day }) => {
+          const dateKey = formatDateKey(yearMonth.year, yearMonth.month, day);
+          return (
+            <DayRow
+              day={day}
+              habits={habits}
+              entries={entries}
+              dateKey={dateKey}
+              onToggleCell={(habitId, newStatus) => {
+                toggleCell(dateKey, habitId);
+                storage.saveEntry(dateKey, habitId, newStatus);
+              }}
+              cellSize={CELL_SIZE}
+              dayColumnWidth={DAY_COLUMN_WIDTH}
+            />
+          );
+        }}
+        scrollEnabled={true}
+      />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
+    backgroundColor: "#fff",
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  emptySubText: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+  },
+  monthLabel: {
+    fontSize: 20,
+    fontWeight: "bold",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: "#f5f5f5",
+    borderBottomWidth: 1,
+    borderBottomColor: "#ddd",
   },
 });

@@ -8,22 +8,50 @@ export interface Habit {
 
 export type CellStatus = 0 | 1 | 2; // 0: empty, 1: done, 2: missed
 
+export interface UIState {
+  selectedMonth: string; // format: "yyyy-MM-01"
+  activeHabitIds: string[]; // empty means all habits are active
+  trackingStartMonth: string; // format: "yyyy-MM-01" - first month user started tracking
+}
+
 interface HabitsState {
   habits: Habit[];
   entries: Record<string, CellStatus>;
+  uiState: UIState;
   isHydrated: boolean;
   addHabit: (name: string) => void;
+  renameHabit: (id: string, newName: string) => void;
   deleteHabit: (id: string) => void;
   setHabits: (habits: Habit[]) => void;
   setEntries: (entries: Record<string, CellStatus>) => void;
+  setUIState: (uiState: UIState) => void;
+  setSelectedMonth: (monthStr: string) => void;
+  setActiveHabits: (habitIds: string[]) => void;
+  toggleActiveHabit: (habitId: string) => void;
   toggleCell: (dateStr: string, habitId: string) => CellStatus;
   getEntryStatus: (dateStr: string, habitId: string) => CellStatus;
   setHydrated: (hydrated: boolean) => void;
+  getActiveHabits: () => Habit[];
 }
 
 export const useHabitsStore = create<HabitsState>((set, get) => ({
   habits: [],
   entries: {},
+  uiState: {
+    selectedMonth: (() => {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+      return `${year}-${month}-01`;
+    })(),
+    activeHabitIds: [],
+    trackingStartMonth: (() => {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+      return `${year}-${month}-01`;
+    })(),
+  },
   isHydrated: false,
 
   addHabit: (name: string) => {
@@ -37,14 +65,28 @@ export const useHabitsStore = create<HabitsState>((set, get) => ({
     });
   },
 
+  renameHabit: (id: string, newName: string) => {
+    set((state) => ({
+      habits: state.habits.map((h) =>
+        h.id === id ? { ...h, name: newName } : h,
+      ),
+    }));
+  },
+
   deleteHabit: (id: string) => {
     set((state) => ({
       habits: state.habits.filter((h) => h.id !== id),
       entries: Object.fromEntries(
         Object.entries(state.entries).filter(
-          ([key]) => !key.endsWith(`::${id}`)
-        )
+          ([key]) => !key.endsWith(`::${id}`),
+        ),
       ),
+      uiState: {
+        ...state.uiState,
+        activeHabitIds: state.uiState.activeHabitIds.filter(
+          (hid) => hid !== id,
+        ),
+      },
     }));
   },
 
@@ -54,6 +96,44 @@ export const useHabitsStore = create<HabitsState>((set, get) => ({
 
   setEntries: (entries: Record<string, CellStatus>) => {
     set({ entries });
+  },
+
+  setUIState: (uiState: UIState) => {
+    set({ uiState });
+  },
+
+  setSelectedMonth: (monthStr: string) => {
+    set((state) => ({
+      uiState: { ...state.uiState, selectedMonth: monthStr },
+    }));
+  },
+
+  setActiveHabits: (habitIds: string[]) => {
+    set((state) => ({
+      uiState: { ...state.uiState, activeHabitIds: habitIds },
+    }));
+  },
+
+  toggleActiveHabit: (habitId: string) => {
+    set((state) => {
+      const allHabitIds = state.habits.map((h) => h.id);
+      const effectiveActive =
+        state.uiState.activeHabitIds.length === 0
+          ? allHabitIds
+          : state.uiState.activeHabitIds;
+
+      const isActive = effectiveActive.includes(habitId);
+      const updated = isActive
+        ? effectiveActive.filter((id) => id !== habitId)
+        : [...effectiveActive, habitId];
+
+      const nextActive =
+        updated.length === allHabitIds.length ? [] : updated.slice();
+
+      return {
+        uiState: { ...state.uiState, activeHabitIds: nextActive },
+      };
+    });
   },
 
   toggleCell: (dateStr: string, habitId: string) => {
@@ -76,5 +156,15 @@ export const useHabitsStore = create<HabitsState>((set, get) => ({
 
   setHydrated: (hydrated: boolean) => {
     set({ isHydrated: hydrated });
+  },
+
+  getActiveHabits: (): Habit[] => {
+    const state = get();
+    if (state.uiState.activeHabitIds.length === 0) {
+      return state.habits;
+    }
+    return state.habits.filter((h) =>
+      state.uiState.activeHabitIds.includes(h.id),
+    );
   },
 }));

@@ -1,8 +1,10 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { CellStatus, Habit } from "../store/habitsStore";
+import { CellStatus, Habit, UIState } from "../store/habitsStore";
 
 const HABITS_KEY = "habits:v1";
 const ENTRIES_KEY = "entries:v1";
+const UI_STATE_KEY = "ui:v1";
+const TRACKING_START_MONTH_KEY = "trackingStartMonth:v1";
 
 export const storage = {
   async loadHabits(): Promise<Habit[]> {
@@ -41,10 +43,28 @@ export const storage = {
     }
   },
 
+  async loadUIState(): Promise<UIState | null> {
+    try {
+      const data = await AsyncStorage.getItem(UI_STATE_KEY);
+      return data ? JSON.parse(data) : null;
+    } catch (error) {
+      console.error("Failed to load UI state:", error);
+      return null;
+    }
+  },
+
+  async saveUIState(uiState: UIState): Promise<void> {
+    try {
+      await AsyncStorage.setItem(UI_STATE_KEY, JSON.stringify(uiState));
+    } catch (error) {
+      console.error("Failed to save UI state:", error);
+    }
+  },
+
   async saveEntry(
     dateStr: string,
     habitId: string,
-    status: CellStatus
+    status: CellStatus,
   ): Promise<void> {
     try {
       const key = `${dateStr}::${habitId}`;
@@ -56,9 +76,32 @@ export const storage = {
     }
   },
 
+  async loadTrackingStartMonth(): Promise<string | null> {
+    try {
+      const data = await AsyncStorage.getItem(TRACKING_START_MONTH_KEY);
+      return data;
+    } catch (error) {
+      console.error("Failed to load tracking start month:", error);
+      return null;
+    }
+  },
+
+  async saveTrackingStartMonth(monthStr: string): Promise<void> {
+    try {
+      await AsyncStorage.setItem(TRACKING_START_MONTH_KEY, monthStr);
+    } catch (error) {
+      console.error("Failed to save tracking start month:", error);
+    }
+  },
+
   async clear(): Promise<void> {
     try {
-      await AsyncStorage.multiRemove([HABITS_KEY, ENTRIES_KEY]);
+      await AsyncStorage.multiRemove([
+        HABITS_KEY,
+        ENTRIES_KEY,
+        UI_STATE_KEY,
+        TRACKING_START_MONTH_KEY,
+      ]);
     } catch (error) {
       console.error("Failed to clear storage:", error);
     }

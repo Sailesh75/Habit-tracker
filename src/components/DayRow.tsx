@@ -1,64 +1,114 @@
-import React from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import React, { useRef } from "react";
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { CellStatus, Habit } from "../store/habitsStore";
-import { Cell } from "./Cell";
+
+interface CellProps {
+  status: CellStatus;
+  onPress: () => void;
+}
+
+function Cell({ status, onPress }: CellProps) {
+  const getContent = () => {
+    switch (status) {
+      case 1:
+        return { text: "✓", color: "#10b981" };
+      case 2:
+        return { text: "✕", color: "#ef4444" };
+      default:
+        return { text: "", color: "#e5e5e5" };
+    }
+  };
+
+  const { text, color } = getContent();
+
+  return (
+    <TouchableOpacity
+      style={[styles.cell, { borderColor: color }]}
+      onPress={onPress}
+    >
+      {text ? <Text style={[styles.cellText, { color }]}>{text}</Text> : null}
+    </TouchableOpacity>
+  );
+}
 
 interface DayRowProps {
   day: number;
   habits: Habit[];
-  entries: Record<string, CellStatus>;
   dateKey: string;
-  onToggleCell: (habitId: string, newStatus: CellStatus) => void;
-  cellSize?: number;
-  dayColumnWidth?: number;
+  getStatus: (dateKey: string, habitId: string) => CellStatus;
+  onToggleCell: (dateKey: string, habitId: string) => void;
+  dayColumnWidth: number;
+  onHorizontalScroll?: (offsetX: number) => void;
+  registerScrollView?: (ref: ScrollView | null) => void;
+  initialScrollX?: number;
 }
 
-const DEFAULT_CELL_SIZE = 40;
-const DEFAULT_DAY_COLUMN_WIDTH = 45;
+const HABIT_COLUMN_WIDTH = 110;
 
 export function DayRow({
   day,
   habits,
-  entries,
   dateKey,
+  getStatus,
   onToggleCell,
-  cellSize = DEFAULT_CELL_SIZE,
-  dayColumnWidth = DEFAULT_DAY_COLUMN_WIDTH,
+  dayColumnWidth,
+  onHorizontalScroll,
+  registerScrollView,
+  initialScrollX = 0,
 }: DayRowProps) {
+  const scrollViewRef = useRef<ScrollView>(null);
+
+  React.useEffect(() => {
+    if (registerScrollView) {
+      registerScrollView(scrollViewRef.current);
+      return () => registerScrollView(null);
+    }
+  }, [registerScrollView]);
+
+  React.useEffect(() => {
+    if (scrollViewRef.current) {
+      scrollViewRef.current.scrollTo({ x: initialScrollX, animated: false });
+    }
+  }, [initialScrollX]);
+
+  const handleScroll = (event: any) => {
+    const offsetX = event.nativeEvent.contentOffset.x;
+    if (onHorizontalScroll) {
+      onHorizontalScroll(offsetX);
+    }
+  };
+
   return (
-    <View style={styles.row}>
-      {/* Fixed day number column */}
-      <View
-        style={[
-          styles.dayColumn,
-          {
-            width: dayColumnWidth,
-            height: cellSize,
-          },
-        ]}
-      >
+    <View style={styles.container}>
+      {/* Fixed left column for day number */}
+      <View style={[styles.dayCell, { width: dayColumnWidth }]}>
         <Text style={styles.dayText}>{day}</Text>
       </View>
 
-      {/* Horizontally scrollable habit cells */}
+      {/* Scrollable cells */}
       <ScrollView
+        ref={scrollViewRef}
         horizontal
         showsHorizontalScrollIndicator={false}
+        onScroll={handleScroll}
         scrollEventThrottle={16}
-        style={styles.habitsScroll}
+        style={styles.scrollView}
       >
         {habits.map((habit) => {
-          const status = entries[`${dateKey}::${habit.id}`] ?? 0;
+          const status = getStatus(dateKey, habit.id);
           return (
-            <Cell
-              key={habit.id}
-              status={status}
-              onPress={() => {
-                const nextStatus = (status + 1) % 3;
-                onToggleCell(habit.id, nextStatus);
-              }}
-              size={cellSize}
-            />
+            <View key={habit.id} style={{ width: HABIT_COLUMN_WIDTH }}>
+              <Cell
+                status={status}
+                onPress={() => onToggleCell(dateKey, habit.id)}
+              />
+            </View>
           );
         })}
       </ScrollView>
@@ -67,24 +117,40 @@ export function DayRow({
 }
 
 const styles = StyleSheet.create({
-  row: {
+  container: {
     flexDirection: "row",
     borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderBottomColor: "#e5e5e5",
   },
-  dayColumn: {
+  dayCell: {
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#f9f9f9",
+    paddingVertical: 12,
+    backgroundColor: "#fafafa",
     borderRightWidth: 1,
-    borderRightColor: "#ccc",
+    borderRightColor: "#e0e0e0",
   },
   dayText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: "600",
     color: "#333",
   },
-  habitsScroll: {
+  scrollView: {
     flex: 1,
+  },
+  cell: {
+    width: 44,
+    height: 44,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderRadius: 8,
+    backgroundColor: "#fff",
+    margin: 8,
+    marginLeft: 33, // Center the cell within the 110px column
+  },
+  cellText: {
+    fontSize: 24,
+    fontWeight: "600",
   },
 });

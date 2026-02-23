@@ -14,19 +14,35 @@ import {
 } from "react-native";
 
 export default function DailyScreen() {
-  const {
-    habits,
-    entries,
-    uiState,
-    isHydrated,
-    setSelectedDate,
-    toggleActiveHabit,
-    toggleCell,
-    addHabit,
-    renameHabit,
-    deleteHabit,
-    getActiveHabits,
-  } = useHabitsStore();
+  // Use selector functions to subscribe to each state piece separately
+  const habits = useHabitsStore((state) => state.habits);
+  const entries = useHabitsStore((state) => state.entries);
+  const uiState = useHabitsStore((state) => state.uiState);
+  const isHydrated = useHabitsStore((state) => state.isHydrated);
+  const setSelectedDate = useHabitsStore((state) => state.setSelectedDate);
+  const toggleActiveHabit = useHabitsStore((state) => state.toggleActiveHabit);
+  const toggleCell = useHabitsStore((state) => state.toggleCell);
+  const addHabit = useHabitsStore((state) => state.addHabit);
+  const renameHabit = useHabitsStore((state) => state.renameHabit);
+  const deleteHabit = useHabitsStore((state) => state.deleteHabit);
+
+  // Derived selector: compute activeHabits from habits and activeHabitIds
+  const activeHabits = useHabitsStore((state) => {
+    const { habits, uiState } = state;
+    const activeIds = uiState.activeHabitIds;
+
+    if (activeIds.length === 0) {
+      return habits;
+    }
+
+    const validIds = activeIds.filter((id) => habits.some((h) => h.id === id));
+
+    if (validIds.length === 0) {
+      return habits;
+    }
+
+    return habits.filter((h) => validIds.includes(h.id));
+  });
 
   const [showHabitsModal, setShowHabitsModal] = useState(false);
   const [showCalendarModal, setShowCalendarModal] = useState(false);
@@ -66,7 +82,6 @@ export default function DailyScreen() {
     );
   }
 
-  const activeHabits = getActiveHabits();
   const selectedDate = uiState.selectedDate;
 
   return (

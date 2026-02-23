@@ -11,7 +11,7 @@ import {
 } from "react-native";
 
 export default function SettingsScreen() {
-  const { clearAllData } = useHabitsStore();
+  const clearAllData = useHabitsStore((state) => state.clearAllData);
 
   const handleClearAllData = () => {
     Alert.alert(

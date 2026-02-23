@@ -68,13 +68,39 @@ export const useHabitsStore = create<HabitsState>((set, get) => ({
         storage.loadUIState(),
       ]);
 
+      // Sanitize activeHabitIds: remove IDs that don't exist in loaded habits
+      let sanitizedUIState = loadedUIState || {
+        selectedDate: new Date(),
+        activeHabitIds: [],
+      };
+
+      if (sanitizedUIState.activeHabitIds.length > 0) {
+        const validHabitIds = loadedHabits.map((h) => h.id);
+        const validActiveIds = sanitizedUIState.activeHabitIds.filter((id) =>
+          validHabitIds.includes(id),
+        );
+
+        // If all IDs were stale, clear the active filter
+        if (validActiveIds.length === 0) {
+          sanitizedUIState = {
+            ...sanitizedUIState,
+            activeHabitIds: [],
+          };
+        } else if (
+          validActiveIds.length < sanitizedUIState.activeHabitIds.length
+        ) {
+          // Some IDs were stale, update to valid ones
+          sanitizedUIState = {
+            ...sanitizedUIState,
+            activeHabitIds: validActiveIds,
+          };
+        }
+      }
+
       set({
         habits: loadedHabits,
         entries: loadedEntries,
-        uiState: loadedUIState || {
-          selectedDate: new Date(),
-          activeHabitIds: [],
-        },
+        uiState: sanitizedUIState,
         isHydrated: true,
       });
     } catch (error) {
@@ -93,10 +119,29 @@ export const useHabitsStore = create<HabitsState>((set, get) => ({
       };
       const newHabits = [...state.habits, newHabit];
 
+      // If activeHabitIds had values, add the new habit to it
+      // If activeHabitIds was empty, keep it empty (show all)
+      let newActiveHabitIds = [...state.uiState.activeHabitIds];
+      if (newActiveHabitIds.length > 0) {
+        newActiveHabitIds = [...newActiveHabitIds, newHabit.id];
+      }
+
       // Persist immediately (async but don't block UI)
       storage.saveHabits(newHabits);
+      if (newActiveHabitIds.length > 0) {
+        storage.saveUIState({
+          ...state.uiState,
+          activeHabitIds: newActiveHabitIds,
+        });
+      }
 
-      return { habits: newHabits };
+      return {
+        habits: newHabits,
+        uiState: {
+          ...state.uiState,
+          activeHabitIds: newActiveHabitIds,
+        },
+      };
     });
   },
 
@@ -242,9 +287,18 @@ export const useHabitsStore = create<HabitsState>((set, get) => ({
     if (state.uiState.activeHabitIds.length === 0) {
       return state.habits;
     }
-    return state.habits.filter((h) =>
-      state.uiState.activeHabitIds.includes(h.id),
+
+    // Filter out any IDs that don't exist in current habits (stale IDs)
+    const validIds = state.uiState.activeHabitIds.filter((id) =>
+      state.habits.some((h) => h.id === id),
     );
+
+    // If all IDs were stale, show all habits
+    if (validIds.length === 0) {
+      return state.habits;
+    }
+
+    return state.habits.filter((h) => validIds.includes(h.id));
   },
 
   // Clear all data (storage + state)

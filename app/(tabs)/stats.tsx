@@ -13,7 +13,11 @@ import {
 } from "react-native";
 
 export default function StatsScreen() {
-  const { habits, entries, isHydrated, getActiveHabits } = useHabitsStore();
+  // Use selector functions to subscribe to each state piece separately
+  const habits = useHabitsStore((state) => state.habits);
+  const entries = useHabitsStore((state) => state.entries);
+  const isHydrated = useHabitsStore((state) => state.isHydrated);
+  const getActiveHabits = useHabitsStore((state) => state.getActiveHabits);
 
   const [viewDate, setViewDate] = React.useState(new Date());
 

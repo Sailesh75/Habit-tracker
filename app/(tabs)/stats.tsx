@@ -1,19 +1,16 @@
+import { MonthlyOverview } from "@/src/components/MonthlyOverview";
 import { storage } from "@/src/storage/storage";
 import { useHabitsStore } from "@/src/store/habitsStore";
-import {
-  formatDateKey,
-  getDaysInMonth,
-  getMonthLabel,
-  parseMonthString,
-} from "@/src/utils/dates";
+import { formatDateKey, getDaysInMonth } from "@/src/utils/dates";
 import { useFocusEffect } from "@react-navigation/native";
+import { addMonths, format, subMonths } from "date-fns";
 import React from "react";
 import {
   ActivityIndicator,
   SafeAreaView,
-  ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 
@@ -28,7 +25,10 @@ export default function StatsScreen() {
     setEntries,
     setUIState,
     getActiveHabits,
+    getEntryStatus,
   } = useHabitsStore();
+
+  const [viewDate, setViewDate] = React.useState(new Date());
 
   // Hydrate store on screen focus
   useFocusEffect(
@@ -49,36 +49,12 @@ export default function StatsScreen() {
     }, [isHydrated, setHabits, setEntries, setUIState, setHydrated]),
   );
 
-  const calculateStats = () => {
-    const activeHabits = getActiveHabits();
-    const { year, month } = parseMonthString(uiState.selectedMonth);
-    const daysInMonth = getDaysInMonth(year, month);
-    const totalPossible = daysInMonth * activeHabits.length;
+  const handlePreviousMonth = () => {
+    setViewDate(subMonths(viewDate, 1));
+  };
 
-    let completedCount = 0;
-    let missedCount = 0;
-
-    for (let day = 1; day <= daysInMonth; day++) {
-      const dateKey = formatDateKey(year, month, day);
-      for (const habit of activeHabits) {
-        const status = entries[`${dateKey}::${habit.id}`] ?? 0;
-        if (status === 1) completedCount++;
-        else if (status === 2) missedCount++;
-      }
-    }
-
-    const completionPercentage =
-      totalPossible > 0
-        ? Math.round((completedCount / totalPossible) * 100)
-        : 0;
-
-    return {
-      totalPossible,
-      completed: completedCount,
-      missed: missedCount,
-      empty: totalPossible - completedCount - missedCount,
-      completionPercentage,
-    };
+  const handleNextMonth = () => {
+    setViewDate(addMonths(viewDate, 1));
   };
 
   if (!isHydrated) {
@@ -93,9 +69,10 @@ export default function StatsScreen() {
   }
 
   const activeHabits = getActiveHabits();
-  const { year, month } = parseMonthString(uiState.selectedMonth);
-  const monthLabel = getMonthLabel(year, month);
-  const stats = calculateStats();
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+  const monthLabel = format(viewDate, "MMMM yyyy");
+  const daysInMonth = getDaysInMonth(year, month);
 
   if (habits.length === 0) {
     return (
@@ -133,98 +110,32 @@ export default function StatsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Month Navigation Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Statistics</Text>
-        <Text style={styles.subtitle}>{monthLabel}</Text>
+        <TouchableOpacity
+          style={styles.navButton}
+          onPress={handlePreviousMonth}
+        >
+          <Text style={styles.navButtonText}>←</Text>
+        </TouchableOpacity>
+        <View style={styles.titleContainer}>
+          <Text style={styles.title}>Monthly Overview</Text>
+          <Text style={styles.subtitle}>{monthLabel}</Text>
+        </View>
+        <TouchableOpacity style={styles.navButton} onPress={handleNextMonth}>
+          <Text style={styles.navButtonText}>→</Text>
+        </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.scrollContainer}>
-        {/* Overall Stats */}
-        <View style={styles.summaryContainer}>
-          <View style={styles.statBox}>
-            <Text style={styles.percentageText}>
-              {stats.completionPercentage}%
-            </Text>
-            <Text style={styles.percentageLabel}>Completion Rate</Text>
-          </View>
-
-          <View style={styles.statsGrid}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{stats.totalPossible}</Text>
-              <Text style={styles.statLabel}>Total Cells</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={[styles.statValue, styles.doneColor]}>
-                {stats.completed}
-              </Text>
-              <Text style={styles.statLabel}>✓ Done</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={[styles.statValue, styles.missedColor]}>
-                {stats.missed}
-              </Text>
-              <Text style={styles.statLabel}>✕ Missed</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{stats.empty}</Text>
-              <Text style={styles.statLabel}>⚪ Empty</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Per Habit Stats */}
-        <View style={styles.habitStatsContainer}>
-          <Text style={styles.sectionTitle}>Per Habit Breakdown</Text>
-          {activeHabits.map((habit) => {
-            const daysInMonth = getDaysInMonth(year, month);
-            let habitCompleted = 0;
-            let habitMissed = 0;
-
-            for (let day = 1; day <= daysInMonth; day++) {
-              const dateKey = formatDateKey(year, month, day);
-              const status = entries[`${dateKey}::${habit.id}`] ?? 0;
-              if (status === 1) habitCompleted++;
-              else if (status === 2) habitMissed++;
-            }
-
-            const habitPercentage =
-              daysInMonth > 0
-                ? Math.round((habitCompleted / daysInMonth) * 100)
-                : 0;
-
-            return (
-              <View key={habit.id} style={styles.habitStatCard}>
-                <Text style={styles.habitStatName}>{habit.name}</Text>
-                <View style={styles.habitStatProgress}>
-                  <View
-                    style={[
-                      styles.habitStatBar,
-                      { width: `${habitPercentage}%` },
-                    ]}
-                  />
-                </View>
-                <View style={styles.habitStatDetails}>
-                  <Text style={styles.habitStatText}>
-                    {habitCompleted} / {daysInMonth} days
-                  </Text>
-                  <Text style={styles.habitStatPercent}>
-                    {habitPercentage}%
-                  </Text>
-                </View>
-                <View style={styles.habitStatMini}>
-                  <Text style={styles.habitStatMiniText}>
-                    ✓ {habitCompleted}
-                  </Text>
-                  <Text style={styles.habitStatMiniText}>✕ {habitMissed}</Text>
-                  <Text style={styles.habitStatMiniText}>
-                    ⚪ {daysInMonth - habitCompleted - habitMissed}
-                  </Text>
-                </View>
-              </View>
-            );
-          })}
-        </View>
-      </ScrollView>
+      {/* Monthly Grid Overview */}
+      <MonthlyOverview
+        year={year}
+        month={month}
+        habits={activeHabits}
+        daysInMonth={daysInMonth}
+        getStatus={getEntryStatus}
+        formatDateKey={formatDateKey}
+      />
     </SafeAreaView>
   );
 }
@@ -250,16 +161,36 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: "#e5e5e5",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  navButton: {
+    width: 44,
+    height: 44,
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 8,
+    backgroundColor: "#f0f0f0",
+  },
+  navButtonText: {
+    fontSize: 20,
+    color: "#333",
+    fontWeight: "600",
+  },
+  titleContainer: {
+    flex: 1,
+    alignItems: "center",
   },
   title: {
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: "700",
     color: "#333",
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: "#666",
-    marginTop: 4,
+    marginTop: 2,
   },
   emptyContainer: {
     flex: 1,
@@ -281,124 +212,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#666",
     textAlign: "center",
-  },
-  scrollContainer: {
-    flex: 1,
-  },
-  summaryContainer: {
-    backgroundColor: "#fff",
-    paddingHorizontal: 20,
-    paddingVertical: 24,
-    marginBottom: 16,
-  },
-  statBox: {
-    backgroundColor: "#f0f9ff",
-    borderRadius: 16,
-    paddingVertical: 24,
-    alignItems: "center",
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: "#bfdbfe",
-  },
-  percentageText: {
-    fontSize: 56,
-    fontWeight: "700",
-    color: "#0066cc",
-  },
-  percentageLabel: {
-    fontSize: 15,
-    color: "#666",
-    marginTop: 4,
-    fontWeight: "500",
-  },
-  statsGrid: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  statItem: {
-    flex: 1,
-    backgroundColor: "#fafafa",
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#e5e5e5",
-  },
-  statLabel: {
-    fontSize: 13,
-    color: "#666",
-    marginTop: 6,
-    fontWeight: "500",
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#333",
-  },
-  doneColor: {
-    color: "#10b981",
-  },
-  missedColor: {
-    color: "#ef4444",
-  },
-  habitStatsContainer: {
-    backgroundColor: "#fff",
-    paddingHorizontal: 20,
-    paddingVertical: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#333",
-    marginBottom: 16,
-  },
-  habitStatCard: {
-    backgroundColor: "#fafafa",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: "#e5e5e5",
-  },
-  habitStatName: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
-    marginBottom: 12,
-  },
-  habitStatProgress: {
-    height: 8,
-    backgroundColor: "#e5e5e5",
-    borderRadius: 4,
-    overflow: "hidden",
-    marginBottom: 8,
-  },
-  habitStatBar: {
-    height: "100%",
-    backgroundColor: "#0066cc",
-    borderRadius: 4,
-  },
-  habitStatDetails: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  habitStatText: {
-    fontSize: 14,
-    color: "#666",
-  },
-  habitStatPercent: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#0066cc",
-  },
-  habitStatMini: {
-    flexDirection: "row",
-    gap: 16,
-  },
-  habitStatMiniText: {
-    fontSize: 13,
-    color: "#666",
   },
 });

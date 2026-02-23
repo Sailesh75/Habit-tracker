@@ -1,27 +1,21 @@
 import { CalendarModal } from "@/src/components/CalendarModal";
+import { DailyView } from "@/src/components/DailyView";
 import { DateNavigation } from "@/src/components/DateNavigation";
-import { DayRow } from "@/src/components/DayRow";
-import { HabitHeaderRow } from "@/src/components/HabitHeaderRow";
 import { HabitsModal } from "@/src/components/HabitsModal";
 import { storage } from "@/src/storage/storage";
 import { useHabitsStore } from "@/src/store/habitsStore";
-import { formatDateKey, getDaysInMonth } from "@/src/utils/dates";
 import { useFocusEffect } from "@react-navigation/native";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  FlatList,
   SafeAreaView,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
 
-const DAY_COLUMN_WIDTH = 50;
-
-export default function GridScreen() {
+export default function DailyScreen() {
   const {
     habits,
     entries,
@@ -43,10 +37,6 @@ export default function GridScreen() {
 
   const [showHabitsModal, setShowHabitsModal] = useState(false);
   const [showCalendarModal, setShowCalendarModal] = useState(false);
-  const headerScrollRef = React.useRef<ScrollView | null>(null);
-  const rowScrollRefs = React.useRef<Record<string, ScrollView | null>>({});
-  const scrollOffsetRef = React.useRef(0);
-  const isSyncingRef = React.useRef(false);
 
   // Hydrate store on first mount
   useFocusEffect(
@@ -132,57 +122,7 @@ export default function GridScreen() {
     toggleActiveHabit(habitId);
   };
 
-  const registerHeaderScroll = (ref: ScrollView | null) => {
-    headerScrollRef.current = ref;
-    if (ref) {
-      ref.scrollTo({ x: scrollOffsetRef.current, animated: false });
-    }
-  };
-
-  const registerRowScroll = (rowKey: string, ref: ScrollView | null) => {
-    if (!ref) {
-      delete rowScrollRefs.current[rowKey];
-      return;
-    }
-
-    rowScrollRefs.current[rowKey] = ref;
-    ref.scrollTo({ x: scrollOffsetRef.current, animated: false });
-  };
-
-  const syncScroll = (sourceKey: string, offsetX: number) => {
-    scrollOffsetRef.current = offsetX;
-
-    if (sourceKey !== "header") {
-      headerScrollRef.current?.scrollTo({ x: offsetX, animated: false });
-    }
-
-    Object.entries(rowScrollRefs.current).forEach(([key, ref]) => {
-      if (key !== sourceKey) {
-        ref?.scrollTo({ x: offsetX, animated: false });
-      }
-    });
-  };
-
-  const handleHeaderScroll = (offsetX: number) => {
-    if (isSyncingRef.current) return;
-    isSyncingRef.current = true;
-    syncScroll("header", offsetX);
-    requestAnimationFrame(() => {
-      isSyncingRef.current = false;
-    });
-  };
-
-  const handleRowScroll = (rowKey: string, offsetX: number) => {
-    if (isSyncingRef.current) return;
-    isSyncingRef.current = true;
-    syncScroll(rowKey, offsetX);
-    requestAnimationFrame(() => {
-      isSyncingRef.current = false;
-    });
-  };
-
-  const handleToggleCell = (dateKey: string, habitId: string) => {
-    console.log("🔄 Toggle cell:", dateKey, "habitId:", habitId);
+  const handleToggleHabit = (dateKey: string, habitId: string) => {
     toggleCell(dateKey, habitId);
   };
 
@@ -199,34 +139,6 @@ export default function GridScreen() {
 
   const activeHabits = getActiveHabits();
   const selectedDate = uiState.selectedDate;
-  const year = selectedDate.getFullYear();
-  const month = selectedDate.getMonth();
-  const daysInMonth = getDaysInMonth(year, month);
-  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
-
-  console.log(
-    "📊 Rendering grid for:",
-    year,
-    "Month:",
-    month + 1,
-    "SelectedDate:",
-    selectedDate.getDate(),
-  );
-
-  // Debug: Show first 3 and last 3 date keys to verify correctness
-  const sampleKeys = [
-    formatDateKey(year, month, 1),
-    formatDateKey(year, month, 2),
-    formatDateKey(year, month, 3),
-    formatDateKey(year, month, daysInMonth - 2),
-    formatDateKey(year, month, daysInMonth - 1),
-    formatDateKey(year, month, daysInMonth),
-  ];
-  console.log("🔍 Sample date keys:", sampleKeys.join(", "));
-  console.log("📦 Current entries count:", Object.keys(entries).length);
-  if (Object.keys(entries).length > 0) {
-    console.log("📦 First few entries:", Object.keys(entries).slice(0, 5));
-  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -254,70 +166,36 @@ export default function GridScreen() {
         )}
       </View>
 
-      {habits.length === 0 ? (
+      {/* Daily View - Shows only selected date's habits */}
+      {activeHabits.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyIcon}>📝</Text>
-          <Text style={styles.emptyText}>No habits yet</Text>
-          <Text style={styles.emptySubText}>
-            Tap "Manage Habits" to add your first habit
+          <Text style={styles.emptyIcon}>
+            {habits.length === 0 ? "📝" : "👀"}
           </Text>
-          <TouchableOpacity
-            style={styles.emptyButton}
-            onPress={() => setShowHabitsModal(true)}
-          >
-            <Text style={styles.emptyButtonText}>Add Your First Habit</Text>
-          </TouchableOpacity>
-        </View>
-      ) : activeHabits.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyIcon}>👀</Text>
-          <Text style={styles.emptyText}>No habits selected</Text>
-          <Text style={styles.emptySubText}>
-            Open "Manage Habits" to select which habits to display
+          <Text style={styles.emptyText}>
+            {habits.length === 0 ? "No habits yet" : "No habits selected"}
           </Text>
+          <Text style={styles.emptySubText}>
+            {habits.length === 0
+              ? 'Tap "Manage Habits" to add your first habit'
+              : 'Open "Manage Habits" to select which habits to display'}
+          </Text>
+          {habits.length === 0 && (
+            <TouchableOpacity
+              style={styles.emptyButton}
+              onPress={() => setShowHabitsModal(true)}
+            >
+              <Text style={styles.emptyButtonText}>Add Your First Habit</Text>
+            </TouchableOpacity>
+          )}
         </View>
       ) : (
-        <View style={styles.gridContainer}>
-          {/* Header Row */}
-          <HabitHeaderRow
-            habits={activeHabits}
-            dayColumnWidth={DAY_COLUMN_WIDTH}
-            onHorizontalScroll={handleHeaderScroll}
-            registerScrollView={registerHeaderScroll}
-            initialScrollX={scrollOffsetRef.current}
-          />
-
-          {/* Days List */}
-          <FlatList
-            data={days}
-            extraData={entries}
-            keyExtractor={(day) => {
-              // CRITICAL: Use full date as key, not just day number
-              // This prevents React from reusing components across months
-              const dateKey = formatDateKey(year, month, day);
-              return dateKey;
-            }}
-            renderItem={({ item: day }) => {
-              const dateKey = formatDateKey(year, month, day);
-              console.log(`🔑 Day ${day} -> dateKey: ${dateKey}`);
-              return (
-                <DayRow
-                  day={day}
-                  habits={activeHabits}
-                  dateKey={dateKey}
-                  getStatus={getEntryStatus}
-                  onToggleCell={handleToggleCell}
-                  dayColumnWidth={DAY_COLUMN_WIDTH}
-                  onHorizontalScroll={(offset) =>
-                    handleRowScroll(dateKey, offset)
-                  }
-                  registerScrollView={(ref) => registerRowScroll(dateKey, ref)}
-                  initialScrollX={scrollOffsetRef.current}
-                />
-              );
-            }}
-          />
-        </View>
+        <DailyView
+          selectedDate={selectedDate}
+          habits={activeHabits}
+          getStatus={getEntryStatus}
+          onToggleHabit={handleToggleHabit}
+        />
       )}
 
       {/* Habits Modal */}
@@ -416,9 +294,5 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",
-  },
-  gridContainer: {
-    flex: 1,
-    backgroundColor: "#fff",
   },
 });

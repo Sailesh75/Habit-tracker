@@ -128,28 +128,18 @@ export const useHabitsStore = create<HabitsState>((set, get) => ({
     const key = `${dateStr}::${habitId}`;
     const current = get().entries[key] ?? 0;
     const next = ((current + 1) % 3) as CellStatus;
-    console.log(
-      `🔄 toggleCell - key: "${key}", current: ${current}, next: ${next}`,
-    );
     set((state) => ({
       entries: {
         ...state.entries,
         [key]: next,
       },
     }));
-    console.log(
-      `📦 All entries after toggle:`,
-      JSON.stringify(get().entries, null, 2),
-    );
     return next;
   },
 
   getEntryStatus: (dateStr: string, habitId: string): CellStatus => {
     const key = `${dateStr}::${habitId}`;
     const status = get().entries[key] ?? 0;
-    if (status !== 0) {
-      console.log(`📖 getEntryStatus - key: "${key}", status: ${status}`);
-    }
     return status;
   },
 

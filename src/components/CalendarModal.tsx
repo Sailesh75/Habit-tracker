@@ -42,12 +42,6 @@ export function CalendarModal({
     // Parse date safely to avoid timezone issues
     // date-fns parse ensures we get a local date, not UTC
     const newDate = parse(day.dateString, "yyyy-MM-dd", new Date());
-    console.log(
-      "📅 Calendar selected:",
-      day.dateString,
-      "-> Date object:",
-      newDate,
-    );
     onSelectDate(newDate);
     onClose();
   };

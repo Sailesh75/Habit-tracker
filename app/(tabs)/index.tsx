@@ -1,16 +1,11 @@
+import { CalendarModal } from "@/src/components/CalendarModal";
+import { DateNavigation } from "@/src/components/DateNavigation";
 import { DayRow } from "@/src/components/DayRow";
 import { HabitHeaderRow } from "@/src/components/HabitHeaderRow";
 import { HabitsModal } from "@/src/components/HabitsModal";
-import { MonthHeader } from "@/src/components/MonthHeader";
 import { storage } from "@/src/storage/storage";
 import { useHabitsStore } from "@/src/store/habitsStore";
-import {
-  formatDateKey,
-  getDaysInMonth,
-  monthDateToString,
-  monthStringToDate,
-  parseMonthString,
-} from "@/src/utils/dates";
+import { formatDateKey, getDaysInMonth } from "@/src/utils/dates";
 import { useFocusEffect } from "@react-navigation/native";
 import React, { useCallback, useEffect, useState } from "react";
 import {
@@ -36,7 +31,7 @@ export default function GridScreen() {
     setHabits,
     setEntries,
     setUIState,
-    setSelectedMonth,
+    setSelectedDate,
     toggleActiveHabit,
     toggleCell,
     getEntryStatus,
@@ -47,6 +42,7 @@ export default function GridScreen() {
   } = useHabitsStore();
 
   const [showHabitsModal, setShowHabitsModal] = useState(false);
+  const [showCalendarModal, setShowCalendarModal] = useState(false);
   const headerScrollRef = React.useRef<ScrollView | null>(null);
   const rowScrollRefs = React.useRef<Record<string, ScrollView | null>>({});
   const scrollOffsetRef = React.useRef(0);
@@ -60,46 +56,33 @@ export default function GridScreen() {
           const loadedHabits = await storage.loadHabits();
           const loadedEntries = await storage.loadEntries();
           const loadedUIState = await storage.loadUIState();
-          const loadedTrackingStartMonth =
-            await storage.loadTrackingStartMonth();
+
+          console.log(
+            "📚 Loaded entries from storage:",
+            JSON.stringify(loadedEntries, null, 2),
+          );
+          console.log(
+            "📚 Number of entry keys:",
+            Object.keys(loadedEntries).length,
+          );
 
           setHabits(loadedHabits);
           setEntries(loadedEntries);
 
-          // Always default to current month, but preserve active habits and tracking start
-          const currentMonth = monthDateToString(new Date());
-          const trackingStartMonth = loadedTrackingStartMonth || currentMonth;
-
-          // Save tracking start month if this is first launch
-          if (!loadedTrackingStartMonth) {
-            await storage.saveTrackingStartMonth(trackingStartMonth);
-          }
-
+          // Use loaded UI state or default to today
           if (loadedUIState) {
-            setUIState({
-              selectedMonth: currentMonth,
-              activeHabitIds: loadedUIState.activeHabitIds,
-              trackingStartMonth,
-            });
+            setUIState(loadedUIState);
           } else {
             setUIState({
-              selectedMonth: currentMonth,
+              selectedDate: new Date(),
               activeHabitIds: [],
-              trackingStartMonth,
             });
           }
 
           setHydrated(true);
         })();
       }
-    }, [
-      isHydrated,
-      setHabits,
-      setEntries,
-      setUIState,
-      setSelectedMonth,
-      setHydrated,
-    ]),
+    }, [isHydrated, setHabits, setEntries, setUIState, setHydrated]),
   );
 
   // Persist habits, entries, and UI state when they change
@@ -121,8 +104,16 @@ export default function GridScreen() {
     }
   }, [uiState, isHydrated]);
 
-  const handleMonthChange = (month: Date) => {
-    setSelectedMonth(monthDateToString(month));
+  const handleDateChange = (date: Date) => {
+    console.log(
+      "📅 Date changed to:",
+      date,
+      "Day:",
+      date.getDate(),
+      "Month:",
+      date.getMonth() + 1,
+    );
+    setSelectedDate(date);
   };
 
   const handleAddHabit = (name: string) => {
@@ -191,6 +182,7 @@ export default function GridScreen() {
   };
 
   const handleToggleCell = (dateKey: string, habitId: string) => {
+    console.log("🔄 Toggle cell:", dateKey, "habitId:", habitId);
     toggleCell(dateKey, habitId);
   };
 
@@ -206,19 +198,43 @@ export default function GridScreen() {
   }
 
   const activeHabits = getActiveHabits();
-  const { year, month } = parseMonthString(uiState.selectedMonth);
-  const currentMonthDate = monthStringToDate(uiState.selectedMonth);
-  const trackingStartMonthDate = monthStringToDate(uiState.trackingStartMonth);
+  const selectedDate = uiState.selectedDate;
+  const year = selectedDate.getFullYear();
+  const month = selectedDate.getMonth();
   const daysInMonth = getDaysInMonth(year, month);
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
+  console.log(
+    "📊 Rendering grid for:",
+    year,
+    "Month:",
+    month + 1,
+    "SelectedDate:",
+    selectedDate.getDate(),
+  );
+
+  // Debug: Show first 3 and last 3 date keys to verify correctness
+  const sampleKeys = [
+    formatDateKey(year, month, 1),
+    formatDateKey(year, month, 2),
+    formatDateKey(year, month, 3),
+    formatDateKey(year, month, daysInMonth - 2),
+    formatDateKey(year, month, daysInMonth - 1),
+    formatDateKey(year, month, daysInMonth),
+  ];
+  console.log("🔍 Sample date keys:", sampleKeys.join(", "));
+  console.log("📦 Current entries count:", Object.keys(entries).length);
+  if (Object.keys(entries).length > 0) {
+    console.log("📦 First few entries:", Object.keys(entries).slice(0, 5));
+  }
+
   return (
     <SafeAreaView style={styles.container}>
-      {/* Month Header */}
-      <MonthHeader
-        currentMonth={currentMonthDate}
-        trackingStartMonth={trackingStartMonthDate}
-        onMonthChange={handleMonthChange}
+      {/* Date Navigation */}
+      <DateNavigation
+        selectedDate={selectedDate}
+        onDateChange={handleDateChange}
+        onOpenCalendar={() => setShowCalendarModal(true)}
       />
 
       {/* Habits Button */}
@@ -274,9 +290,16 @@ export default function GridScreen() {
           {/* Days List */}
           <FlatList
             data={days}
-            keyExtractor={(day) => day.toString()}
+            extraData={entries}
+            keyExtractor={(day) => {
+              // CRITICAL: Use full date as key, not just day number
+              // This prevents React from reusing components across months
+              const dateKey = formatDateKey(year, month, day);
+              return dateKey;
+            }}
             renderItem={({ item: day }) => {
               const dateKey = formatDateKey(year, month, day);
+              console.log(`🔑 Day ${day} -> dateKey: ${dateKey}`);
               return (
                 <DayRow
                   day={day}
@@ -307,6 +330,14 @@ export default function GridScreen() {
         onRenameHabit={handleRenameHabit}
         onDeleteHabit={handleDeleteHabit}
         onToggleActiveHabit={handleToggleActiveHabit}
+      />
+
+      {/* Calendar Modal */}
+      <CalendarModal
+        visible={showCalendarModal}
+        selectedDate={selectedDate}
+        onClose={() => setShowCalendarModal(false)}
+        onSelectDate={handleDateChange}
       />
     </SafeAreaView>
   );

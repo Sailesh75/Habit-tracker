@@ -9,9 +9,8 @@ export interface Habit {
 export type CellStatus = 0 | 1 | 2; // 0: empty, 1: done, 2: missed
 
 export interface UIState {
-  selectedMonth: string; // format: "yyyy-MM-01"
+  selectedDate: Date; // the currently selected date
   activeHabitIds: string[]; // empty means all habits are active
-  trackingStartMonth: string; // format: "yyyy-MM-01" - first month user started tracking
 }
 
 interface HabitsState {
@@ -25,7 +24,7 @@ interface HabitsState {
   setHabits: (habits: Habit[]) => void;
   setEntries: (entries: Record<string, CellStatus>) => void;
   setUIState: (uiState: UIState) => void;
-  setSelectedMonth: (monthStr: string) => void;
+  setSelectedDate: (date: Date) => void;
   setActiveHabits: (habitIds: string[]) => void;
   toggleActiveHabit: (habitId: string) => void;
   toggleCell: (dateStr: string, habitId: string) => CellStatus;
@@ -38,19 +37,8 @@ export const useHabitsStore = create<HabitsState>((set, get) => ({
   habits: [],
   entries: {},
   uiState: {
-    selectedMonth: (() => {
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, "0");
-      return `${year}-${month}-01`;
-    })(),
+    selectedDate: new Date(),
     activeHabitIds: [],
-    trackingStartMonth: (() => {
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, "0");
-      return `${year}-${month}-01`;
-    })(),
   },
   isHydrated: false,
 
@@ -102,9 +90,9 @@ export const useHabitsStore = create<HabitsState>((set, get) => ({
     set({ uiState });
   },
 
-  setSelectedMonth: (monthStr: string) => {
+  setSelectedDate: (date: Date) => {
     set((state) => ({
-      uiState: { ...state.uiState, selectedMonth: monthStr },
+      uiState: { ...state.uiState, selectedDate: date },
     }));
   },
 
@@ -140,18 +128,29 @@ export const useHabitsStore = create<HabitsState>((set, get) => ({
     const key = `${dateStr}::${habitId}`;
     const current = get().entries[key] ?? 0;
     const next = ((current + 1) % 3) as CellStatus;
+    console.log(
+      `🔄 toggleCell - key: "${key}", current: ${current}, next: ${next}`,
+    );
     set((state) => ({
       entries: {
         ...state.entries,
         [key]: next,
       },
     }));
+    console.log(
+      `📦 All entries after toggle:`,
+      JSON.stringify(get().entries, null, 2),
+    );
     return next;
   },
 
   getEntryStatus: (dateStr: string, habitId: string): CellStatus => {
     const key = `${dateStr}::${habitId}`;
-    return get().entries[key] ?? 0;
+    const status = get().entries[key] ?? 0;
+    if (status !== 0) {
+      console.log(`📖 getEntryStatus - key: "${key}", status: ${status}`);
+    }
+    return status;
   },
 
   setHydrated: (hydrated: boolean) => {

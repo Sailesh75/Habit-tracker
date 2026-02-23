@@ -3,8 +3,7 @@ import { CellStatus, Habit, UIState } from "../store/habitsStore";
 
 const HABITS_KEY = "habits:v1";
 const ENTRIES_KEY = "entries:v1";
-const UI_STATE_KEY = "ui:v1";
-const TRACKING_START_MONTH_KEY = "trackingStartMonth:v1";
+const UI_STATE_KEY = "ui:v2"; // bumped version for new structure
 
 export const storage = {
   async loadHabits(): Promise<Habit[]> {
@@ -46,7 +45,15 @@ export const storage = {
   async loadUIState(): Promise<UIState | null> {
     try {
       const data = await AsyncStorage.getItem(UI_STATE_KEY);
-      return data ? JSON.parse(data) : null;
+      if (!data) return null;
+      const parsed = JSON.parse(data);
+      // Convert selectedDate string back to Date object
+      return {
+        ...parsed,
+        selectedDate: parsed.selectedDate
+          ? new Date(parsed.selectedDate)
+          : new Date(),
+      };
     } catch (error) {
       console.error("Failed to load UI state:", error);
       return null;
@@ -55,7 +62,12 @@ export const storage = {
 
   async saveUIState(uiState: UIState): Promise<void> {
     try {
-      await AsyncStorage.setItem(UI_STATE_KEY, JSON.stringify(uiState));
+      // Serialize Date to ISO string
+      const serializable = {
+        ...uiState,
+        selectedDate: uiState.selectedDate.toISOString(),
+      };
+      await AsyncStorage.setItem(UI_STATE_KEY, JSON.stringify(serializable));
     } catch (error) {
       console.error("Failed to save UI state:", error);
     }
@@ -76,32 +88,9 @@ export const storage = {
     }
   },
 
-  async loadTrackingStartMonth(): Promise<string | null> {
-    try {
-      const data = await AsyncStorage.getItem(TRACKING_START_MONTH_KEY);
-      return data;
-    } catch (error) {
-      console.error("Failed to load tracking start month:", error);
-      return null;
-    }
-  },
-
-  async saveTrackingStartMonth(monthStr: string): Promise<void> {
-    try {
-      await AsyncStorage.setItem(TRACKING_START_MONTH_KEY, monthStr);
-    } catch (error) {
-      console.error("Failed to save tracking start month:", error);
-    }
-  },
-
   async clear(): Promise<void> {
     try {
-      await AsyncStorage.multiRemove([
-        HABITS_KEY,
-        ENTRIES_KEY,
-        UI_STATE_KEY,
-        TRACKING_START_MONTH_KEY,
-      ]);
+      await AsyncStorage.multiRemove([HABITS_KEY, ENTRIES_KEY, UI_STATE_KEY]);
     } catch (error) {
       console.error("Failed to clear storage:", error);
     }

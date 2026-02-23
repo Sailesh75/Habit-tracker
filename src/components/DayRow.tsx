@@ -64,6 +64,14 @@ export function DayRow({
 }: DayRowProps) {
   const scrollViewRef = useRef<ScrollView>(null);
 
+  // Debug: Log when component mounts to verify React is creating separate instances
+  React.useEffect(() => {
+    console.log(`🆕 DayRow mounted - Day ${day}, dateKey: "${dateKey}"`);
+    return () => {
+      console.log(`💀 DayRow unmounted - Day ${day}, dateKey: "${dateKey}"`);
+    };
+  }, [day, dateKey]);
+
   React.useEffect(() => {
     if (registerScrollView) {
       registerScrollView(scrollViewRef.current);
@@ -102,11 +110,22 @@ export function DayRow({
       >
         {habits.map((habit) => {
           const status = getStatus(dateKey, habit.id);
+          // Log every cell's status to see what's actually being rendered
+          if (status !== 0) {
+            console.log(
+              `📱 Rendering cell - Day ${day}, dateKey: "${dateKey}", habitId: ${habit.id}, status: ${status}`,
+            );
+          }
           return (
             <View key={habit.id} style={{ width: HABIT_COLUMN_WIDTH }}>
               <Cell
                 status={status}
-                onPress={() => onToggleCell(dateKey, habit.id)}
+                onPress={() => {
+                  console.log(
+                    `🎯 DayRow cell clicked - Day: ${day}, dateKey: "${dateKey}", habitId: ${habit.id}`,
+                  );
+                  onToggleCell(dateKey, habit.id);
+                }}
               />
             </View>
           );

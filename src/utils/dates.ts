@@ -34,16 +34,18 @@ export function getDaysOfMonth(year: number, month: number): number[] {
 
 /**
  * Format a date as YYYY-MM-DD.
+ * Safely formats without creating Date objects to avoid timezone issues.
  */
 export function formatDateKey(
   year: number,
-  month: number,
+  month: number, // 0-indexed (0=Jan, 1=Feb, etc.)
   day: number,
 ): string {
-  const date = new Date(year, month, day);
-  const yyyy = date.getFullYear().toString().padStart(4, "0");
-  const mm = (date.getMonth() + 1).toString().padStart(2, "0");
-  const dd = date.getDate().toString().padStart(2, "0");
+  // Direct string formatting - no Date object creation
+  // This avoids any potential timezone or DST issues
+  const yyyy = year.toString().padStart(4, "0");
+  const mm = (month + 1).toString().padStart(2, "0"); // month is 0-indexed, convert to 1-indexed
+  const dd = day.toString().padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
 }
 

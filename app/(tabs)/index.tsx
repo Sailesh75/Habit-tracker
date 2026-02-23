@@ -2,10 +2,8 @@ import { CalendarModal } from "@/src/components/CalendarModal";
 import { DailyView } from "@/src/components/DailyView";
 import { DateNavigation } from "@/src/components/DateNavigation";
 import { HabitsModal } from "@/src/components/HabitsModal";
-import { storage } from "@/src/storage/storage";
 import { useHabitsStore } from "@/src/store/habitsStore";
-import { useFocusEffect } from "@react-navigation/native";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
   SafeAreaView,
@@ -21,14 +19,9 @@ export default function DailyScreen() {
     entries,
     uiState,
     isHydrated,
-    setHydrated,
-    setHabits,
-    setEntries,
-    setUIState,
     setSelectedDate,
     toggleActiveHabit,
     toggleCell,
-    getEntryStatus,
     addHabit,
     renameHabit,
     deleteHabit,
@@ -38,71 +31,7 @@ export default function DailyScreen() {
   const [showHabitsModal, setShowHabitsModal] = useState(false);
   const [showCalendarModal, setShowCalendarModal] = useState(false);
 
-  // Hydrate store on first mount
-  useFocusEffect(
-    useCallback(() => {
-      if (!isHydrated) {
-        (async () => {
-          const loadedHabits = await storage.loadHabits();
-          const loadedEntries = await storage.loadEntries();
-          const loadedUIState = await storage.loadUIState();
-
-          console.log(
-            "📚 Loaded entries from storage:",
-            JSON.stringify(loadedEntries, null, 2),
-          );
-          console.log(
-            "📚 Number of entry keys:",
-            Object.keys(loadedEntries).length,
-          );
-
-          setHabits(loadedHabits);
-          setEntries(loadedEntries);
-
-          // Use loaded UI state or default to today
-          if (loadedUIState) {
-            setUIState(loadedUIState);
-          } else {
-            setUIState({
-              selectedDate: new Date(),
-              activeHabitIds: [],
-            });
-          }
-
-          setHydrated(true);
-        })();
-      }
-    }, [isHydrated, setHabits, setEntries, setUIState, setHydrated]),
-  );
-
-  // Persist habits, entries, and UI state when they change
-  useEffect(() => {
-    if (isHydrated) {
-      storage.saveHabits(habits);
-    }
-  }, [habits, isHydrated]);
-
-  useEffect(() => {
-    if (isHydrated) {
-      storage.saveEntries(entries);
-    }
-  }, [entries, isHydrated]);
-
-  useEffect(() => {
-    if (isHydrated) {
-      storage.saveUIState(uiState);
-    }
-  }, [uiState, isHydrated]);
-
   const handleDateChange = (date: Date) => {
-    console.log(
-      "📅 Date changed to:",
-      date,
-      "Day:",
-      date.getDate(),
-      "Month:",
-      date.getMonth() + 1,
-    );
     setSelectedDate(date);
   };
 
@@ -193,7 +122,7 @@ export default function DailyScreen() {
         <DailyView
           selectedDate={selectedDate}
           habits={activeHabits}
-          getStatus={getEntryStatus}
+          entries={entries}
           onToggleHabit={handleToggleHabit}
         />
       )}

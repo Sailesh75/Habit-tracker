@@ -12,21 +12,26 @@ import { CellStatus, Habit } from "../store/habitsStore";
 interface DailyViewProps {
   selectedDate: Date;
   habits: Habit[];
-  getStatus: (dateKey: string, habitId: string) => CellStatus;
+  entries: Record<string, CellStatus>;
   onToggleHabit: (dateKey: string, habitId: string) => void;
 }
 
 export function DailyView({
   selectedDate,
   habits,
-  getStatus,
+  entries,
   onToggleHabit,
 }: DailyViewProps) {
   const dateKey = format(selectedDate, "yyyy-MM-dd");
 
+  const getStatus = (habitId: string): CellStatus => {
+    const key = `${dateKey}::${habitId}`;
+    return entries[key] ?? 0;
+  };
+
   // Calculate completion progress
   const completedCount = habits.filter((habit) => {
-    const status = getStatus(dateKey, habit.id);
+    const status = getStatus(habit.id);
     return status === 1; // 1 = completed
   }).length;
 
@@ -78,7 +83,7 @@ export function DailyView({
         contentContainerStyle={styles.habitsListContent}
       >
         {habits.map((habit) => {
-          const status = getStatus(dateKey, habit.id);
+          const status = getStatus(habit.id);
           const checkboxStyle = getCheckboxStyle(status);
 
           return (

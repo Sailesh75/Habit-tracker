@@ -1,8 +1,6 @@
 import { MonthlyOverview } from "@/src/components/MonthlyOverview";
-import { storage } from "@/src/storage/storage";
 import { useHabitsStore } from "@/src/store/habitsStore";
 import { formatDateKey, getDaysInMonth } from "@/src/utils/dates";
-import { useFocusEffect } from "@react-navigation/native";
 import { addMonths, format, subMonths } from "date-fns";
 import React from "react";
 import {
@@ -15,39 +13,9 @@ import {
 } from "react-native";
 
 export default function StatsScreen() {
-  const {
-    habits,
-    entries,
-    uiState,
-    isHydrated,
-    setHydrated,
-    setHabits,
-    setEntries,
-    setUIState,
-    getActiveHabits,
-    getEntryStatus,
-  } = useHabitsStore();
+  const { habits, entries, isHydrated, getActiveHabits } = useHabitsStore();
 
   const [viewDate, setViewDate] = React.useState(new Date());
-
-  // Hydrate store on screen focus
-  useFocusEffect(
-    React.useCallback(() => {
-      if (!isHydrated) {
-        (async () => {
-          const loadedHabits = await storage.loadHabits();
-          const loadedEntries = await storage.loadEntries();
-          const loadedUIState = await storage.loadUIState();
-          setHabits(loadedHabits);
-          setEntries(loadedEntries);
-          if (loadedUIState) {
-            setUIState(loadedUIState);
-          }
-          setHydrated(true);
-        })();
-      }
-    }, [isHydrated, setHabits, setEntries, setUIState, setHydrated]),
-  );
 
   const handlePreviousMonth = () => {
     setViewDate(subMonths(viewDate, 1));
@@ -133,7 +101,7 @@ export default function StatsScreen() {
         month={month}
         habits={activeHabits}
         daysInMonth={daysInMonth}
-        getStatus={getEntryStatus}
+        entries={entries}
         formatDateKey={formatDateKey}
       />
     </SafeAreaView>

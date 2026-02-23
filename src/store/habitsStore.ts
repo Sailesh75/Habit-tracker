@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { storage } from "../storage/storage";
 
 export interface Habit {
   id: string;
@@ -18,19 +19,35 @@ interface HabitsState {
   entries: Record<string, CellStatus>;
   uiState: UIState;
   isHydrated: boolean;
+
+  // Initialization
+  hydrate: () => Promise<void>;
+
+  // Habit mutations (with auto-persist)
   addHabit: (name: string) => void;
   renameHabit: (id: string, newName: string) => void;
   deleteHabit: (id: string) => void;
-  setHabits: (habits: Habit[]) => void;
-  setEntries: (entries: Record<string, CellStatus>) => void;
-  setUIState: (uiState: UIState) => void;
+
+  // Entry mutations (with auto-persist)
+  toggleCell: (dateStr: string, habitId: string) => CellStatus;
+
+  // UI state mutations (with auto-persist)
   setSelectedDate: (date: Date) => void;
   setActiveHabits: (habitIds: string[]) => void;
   toggleActiveHabit: (habitId: string) => void;
-  toggleCell: (dateStr: string, habitId: string) => CellStatus;
+
+  // Utility methods
   getEntryStatus: (dateStr: string, habitId: string) => CellStatus;
-  setHydrated: (hydrated: boolean) => void;
   getActiveHabits: () => Habit[];
+
+  // Clear all data
+  clearAllData: () => Promise<void>;
+
+  // Internal setters (for hydration only)
+  _setHabits: (habits: Habit[]) => void;
+  _setEntries: (entries: Record<string, CellStatus>) => void;
+  _setUIState: (uiState: UIState) => void;
+  _setHydrated: (hydrated: boolean) => void;
 }
 
 export const useHabitsStore = create<HabitsState>((set, get) => ({
@@ -42,6 +59,31 @@ export const useHabitsStore = create<HabitsState>((set, get) => ({
   },
   isHydrated: false,
 
+  // Hydrate from storage (called once on app startup)
+  hydrate: async () => {
+    try {
+      const [loadedHabits, loadedEntries, loadedUIState] = await Promise.all([
+        storage.loadHabits(),
+        storage.loadEntries(),
+        storage.loadUIState(),
+      ]);
+
+      set({
+        habits: loadedHabits,
+        entries: loadedEntries,
+        uiState: loadedUIState || {
+          selectedDate: new Date(),
+          activeHabitIds: [],
+        },
+        isHydrated: true,
+      });
+    } catch (error) {
+      console.error("Failed to hydrate store:", error);
+      set({ isHydrated: true }); // Mark as hydrated even on error
+    }
+  },
+
+  // Add habit with auto-persist
   addHabit: (name: string) => {
     set((state) => {
       const newHabit: Habit = {
@@ -49,59 +91,100 @@ export const useHabitsStore = create<HabitsState>((set, get) => ({
         name,
         order: Math.max(0, ...state.habits.map((h) => h.order), -1) + 1,
       };
-      return { habits: [...state.habits, newHabit] };
+      const newHabits = [...state.habits, newHabit];
+
+      // Persist immediately (async but don't block UI)
+      storage.saveHabits(newHabits);
+
+      return { habits: newHabits };
     });
   },
 
+  // Rename habit with auto-persist
   renameHabit: (id: string, newName: string) => {
-    set((state) => ({
-      habits: state.habits.map((h) =>
+    set((state) => {
+      const newHabits = state.habits.map((h) =>
         h.id === id ? { ...h, name: newName } : h,
-      ),
-    }));
+      );
+
+      // Persist immediately
+      storage.saveHabits(newHabits);
+
+      return { habits: newHabits };
+    });
   },
 
+  // Delete habit with auto-persist
   deleteHabit: (id: string) => {
-    set((state) => ({
-      habits: state.habits.filter((h) => h.id !== id),
-      entries: Object.fromEntries(
+    set((state) => {
+      const newHabits = state.habits.filter((h) => h.id !== id);
+      const newEntries = Object.fromEntries(
         Object.entries(state.entries).filter(
           ([key]) => !key.endsWith(`::${id}`),
         ),
-      ),
-      uiState: {
+      );
+      const newUIState = {
         ...state.uiState,
         activeHabitIds: state.uiState.activeHabitIds.filter(
           (hid) => hid !== id,
         ),
-      },
-    }));
+      };
+
+      // Persist all changes immediately
+      storage.saveHabits(newHabits);
+      storage.saveEntries(newEntries);
+      storage.saveUIState(newUIState);
+
+      return {
+        habits: newHabits,
+        entries: newEntries,
+        uiState: newUIState,
+      };
+    });
   },
 
-  setHabits: (habits: Habit[]) => {
+  // Internal setters (used only during hydration)
+  _setHabits: (habits: Habit[]) => {
     set({ habits });
   },
 
-  setEntries: (entries: Record<string, CellStatus>) => {
+  _setEntries: (entries: Record<string, CellStatus>) => {
     set({ entries });
   },
 
-  setUIState: (uiState: UIState) => {
+  _setUIState: (uiState: UIState) => {
     set({ uiState });
   },
 
+  _setHydrated: (hydrated: boolean) => {
+    set({ isHydrated: hydrated });
+  },
+
+  // Set selected date with auto-persist
   setSelectedDate: (date: Date) => {
-    set((state) => ({
-      uiState: { ...state.uiState, selectedDate: date },
-    }));
+    set((state) => {
+      const newUIState = { ...state.uiState, selectedDate: date };
+
+      // Persist immediately
+      storage.saveUIState(newUIState);
+
+      return { uiState: newUIState };
+    });
   },
 
+  // Set active habits with auto-persist
   setActiveHabits: (habitIds: string[]) => {
-    set((state) => ({
-      uiState: { ...state.uiState, activeHabitIds: habitIds },
-    }));
+    set((state) => {
+      const newUIState = { ...state.uiState, activeHabitIds: habitIds };
+
+      // Persist immediately
+      storage.saveUIState(newUIState);
+
+      return { uiState: newUIState };
+    });
   },
 
+  // Toggle active habit with auto-persist
   toggleActiveHabit: (habitId: string) => {
     set((state) => {
       const allHabitIds = state.habits.map((h) => h.id);
@@ -118,22 +201,33 @@ export const useHabitsStore = create<HabitsState>((set, get) => ({
       const nextActive =
         updated.length === allHabitIds.length ? [] : updated.slice();
 
-      return {
-        uiState: { ...state.uiState, activeHabitIds: nextActive },
-      };
+      const newUIState = { ...state.uiState, activeHabitIds: nextActive };
+
+      // Persist immediately
+      storage.saveUIState(newUIState);
+
+      return { uiState: newUIState };
     });
   },
 
+  // Toggle cell with auto-persist
   toggleCell: (dateStr: string, habitId: string) => {
     const key = `${dateStr}::${habitId}`;
     const current = get().entries[key] ?? 0;
     const next = ((current + 1) % 3) as CellStatus;
-    set((state) => ({
-      entries: {
+
+    set((state) => {
+      const newEntries = {
         ...state.entries,
         [key]: next,
-      },
-    }));
+      };
+
+      // Persist immediately
+      storage.saveEntries(newEntries);
+
+      return { entries: newEntries };
+    });
+
     return next;
   },
 
@@ -141,10 +235,6 @@ export const useHabitsStore = create<HabitsState>((set, get) => ({
     const key = `${dateStr}::${habitId}`;
     const status = get().entries[key] ?? 0;
     return status;
-  },
-
-  setHydrated: (hydrated: boolean) => {
-    set({ isHydrated: hydrated });
   },
 
   getActiveHabits: (): Habit[] => {
@@ -155,5 +245,19 @@ export const useHabitsStore = create<HabitsState>((set, get) => ({
     return state.habits.filter((h) =>
       state.uiState.activeHabitIds.includes(h.id),
     );
+  },
+
+  // Clear all data (storage + state)
+  clearAllData: async () => {
+    await storage.clear();
+    set({
+      habits: [],
+      entries: {},
+      uiState: {
+        selectedDate: new Date(),
+        activeHabitIds: [],
+      },
+      isHydrated: true, // Keep hydrated flag true
+    });
   },
 }));

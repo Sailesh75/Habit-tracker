@@ -1,4 +1,3 @@
-import { storage } from "@/src/storage/storage";
 import { useHabitsStore } from "@/src/store/habitsStore";
 import React from "react";
 import {
@@ -12,7 +11,7 @@ import {
 } from "react-native";
 
 export default function SettingsScreen() {
-  const { setHabits, setEntries, setHydrated } = useHabitsStore();
+  const { clearAllData } = useHabitsStore();
 
   const handleClearAllData = () => {
     Alert.alert(
@@ -24,10 +23,7 @@ export default function SettingsScreen() {
           text: "Clear All",
           style: "destructive",
           onPress: async () => {
-            await storage.clear();
-            setHabits([]);
-            setEntries({});
-            setHydrated(false);
+            await clearAllData();
             Alert.alert("Success", "All data has been cleared");
           },
         },

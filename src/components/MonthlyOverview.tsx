@@ -8,7 +8,7 @@ interface MonthlyOverviewProps {
   month: number; // 0-indexed
   habits: Habit[];
   daysInMonth: number;
-  getStatus: (dateKey: string, habitId: string) => CellStatus;
+  entries: Record<string, CellStatus>;
   formatDateKey: (year: number, month: number, day: number) => string;
 }
 
@@ -17,9 +17,13 @@ export function MonthlyOverview({
   month,
   habits,
   daysInMonth,
-  getStatus,
+  entries,
   formatDateKey,
 }: MonthlyOverviewProps) {
+  const getStatus = (dateKey: string, habitId: string): CellStatus => {
+    const key = `${dateKey}::${habitId}`;
+    return entries[key] ?? 0;
+  };
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
   const monthName = format(new Date(year, month, 1), "MMMM yyyy");
 

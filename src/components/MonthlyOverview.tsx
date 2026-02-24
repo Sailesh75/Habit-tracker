@@ -57,62 +57,69 @@ export function MonthlyOverview({
         <Text style={styles.monthTitle}>{monthName}</Text>
       </View>
 
-      {/* Grid */}
+      {/* Grid - Horizontal scroll for habits, vertical scroll for days */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.horizontalScroll}
       >
         <View>
-          {/* Day Numbers Header */}
-          <View style={styles.dayHeaderRow}>
-            <View style={styles.habitNameCell}>
-              <Text style={styles.habitNameText}>Habit</Text>
+          {/* Habit Names Header */}
+          <View style={styles.headerRow}>
+            <View style={styles.dateCell}>
+              <Text style={styles.dateCellText}>Date</Text>
             </View>
-            {days.map((day) => (
-              <View key={day} style={styles.dayHeaderCell}>
-                <Text style={styles.dayHeaderText}>{day}</Text>
+            {habits.map((habit) => (
+              <View key={habit.id} style={styles.habitHeaderCell}>
+                <Text style={styles.habitHeaderText} numberOfLines={2}>
+                  {habit.name}
+                </Text>
               </View>
             ))}
           </View>
 
-          {/* Habit Rows */}
+          {/* Day Rows */}
           <ScrollView style={styles.verticalScroll}>
-            {habits.map((habit) => (
-              <View key={habit.id} style={styles.habitRow}>
-                {/* Habit Name */}
-                <View style={styles.habitNameCell}>
-                  <Text style={styles.habitNameText} numberOfLines={1}>
-                    {habit.name}
-                  </Text>
+            {days.map((day) => {
+              const dateKey = formatDateKey(year, month, day);
+              const dayLabel = format(new Date(year, month, day), "MMM d");
+
+              return (
+                <View key={day} style={styles.dayRow}>
+                  {/* Date Label */}
+                  <View style={styles.dateCell}>
+                    <Text style={styles.dateCellText}>{dayLabel}</Text>
+                  </View>
+
+                  {/* Habit Cells */}
+                  {habits.map((habit) => {
+                    const status = getStatus(dateKey, habit.id);
+                    const cellStyle = getCellStyle(status);
+
+                    return (
+                      <View
+                        key={habit.id}
+                        style={[
+                          styles.statusCell,
+                          { backgroundColor: cellStyle.backgroundColor },
+                        ]}
+                      >
+                        {cellStyle.text ? (
+                          <Text
+                            style={[
+                              styles.cellText,
+                              { color: cellStyle.color },
+                            ]}
+                          >
+                            {cellStyle.text}
+                          </Text>
+                        ) : null}
+                      </View>
+                    );
+                  })}
                 </View>
-
-                {/* Day Cells */}
-                {days.map((day) => {
-                  const dateKey = formatDateKey(year, month, day);
-                  const status = getStatus(dateKey, habit.id);
-                  const cellStyle = getCellStyle(status);
-
-                  return (
-                    <View
-                      key={day}
-                      style={[
-                        styles.dayCell,
-                        { backgroundColor: cellStyle.backgroundColor },
-                      ]}
-                    >
-                      {cellStyle.text ? (
-                        <Text
-                          style={[styles.cellText, { color: cellStyle.color }]}
-                        >
-                          {cellStyle.text}
-                        </Text>
-                      ) : null}
-                    </View>
-                  );
-                })}
-              </View>
-            ))}
+              );
+            })}
           </ScrollView>
         </View>
       </ScrollView>
@@ -141,43 +148,44 @@ const styles = StyleSheet.create({
   verticalScroll: {
     flex: 1,
   },
-  dayHeaderRow: {
+  headerRow: {
     flexDirection: "row",
     borderBottomWidth: 2,
     borderBottomColor: "#e5e5e5",
     backgroundColor: "#f9f9f9",
   },
-  habitNameCell: {
-    width: 120,
+  dateCell: {
+    width: 80,
     padding: 12,
     justifyContent: "center",
     borderRightWidth: 1,
     borderRightColor: "#e5e5e5",
   },
-  habitNameText: {
+  dateCellText: {
     fontSize: 14,
     fontWeight: "600",
     color: "#333",
   },
-  dayHeaderCell: {
-    width: 40,
+  habitHeaderCell: {
+    width: 80,
     padding: 8,
     alignItems: "center",
     justifyContent: "center",
   },
-  dayHeaderText: {
+  habitHeaderText: {
     fontSize: 12,
     fontWeight: "600",
     color: "#666",
+    textAlign: "center",
   },
-  habitRow: {
+  dayRow: {
     flexDirection: "row",
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
   },
-  dayCell: {
-    width: 40,
-    height: 40,
+  statusCell: {
+    width: 80,
+    height: 48,
     alignItems: "center",
     justifyContent: "center",
     borderLeftWidth: 1,

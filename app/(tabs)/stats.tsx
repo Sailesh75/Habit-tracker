@@ -13,11 +13,22 @@ import {
 } from "react-native";
 
 export default function StatsScreen() {
-  // Use selector functions to subscribe to each state piece separately
-  const habits = useHabitsStore((state) => state.habits);
+  // Compute active habits inside selector to ensure proper subscription
+  const activeHabits = useHabitsStore((state) => {
+    if (state.uiState.activeHabitIds.length === 0) {
+      return state.habits;
+    }
+    const validIds = state.uiState.activeHabitIds.filter((id) =>
+      state.habits.some((h) => h.id === id),
+    );
+    if (validIds.length === 0) {
+      return state.habits;
+    }
+    return state.habits.filter((h) => validIds.includes(h.id));
+  });
   const entries = useHabitsStore((state) => state.entries);
   const isHydrated = useHabitsStore((state) => state.isHydrated);
-  const getActiveHabits = useHabitsStore((state) => state.getActiveHabits);
+  const totalHabits = useHabitsStore((state) => state.habits.length);
 
   const [viewDate, setViewDate] = React.useState(new Date());
 
@@ -40,13 +51,12 @@ export default function StatsScreen() {
     );
   }
 
-  const activeHabits = getActiveHabits();
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
   const monthLabel = format(viewDate, "MMMM yyyy");
   const daysInMonth = getDaysInMonth(year, month);
 
-  if (habits.length === 0) {
+  if (totalHabits === 0) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>

@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 export default function DailyScreen() {
   // Use selector functions to subscribe to each state piece separately
@@ -85,90 +86,93 @@ export default function DailyScreen() {
   const selectedDate = uiState.selectedDate;
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Date Navigation */}
-      <DateNavigation
-        selectedDate={selectedDate}
-        onDateChange={handleDateChange}
-        onOpenCalendar={() => setShowCalendarModal(true)}
-      />
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaView style={styles.container}>
+        {/* Date Navigation */}
+        <DateNavigation
+          selectedDate={selectedDate}
+          onDateChange={handleDateChange}
+          onOpenCalendar={() => setShowCalendarModal(true)}
+        />
 
-      {/* Habits Button */}
-      <View style={styles.toolbar}>
-        <TouchableOpacity
-          style={styles.habitsButton}
-          onPress={() => setShowHabitsModal(true)}
-        >
-          <Text style={styles.habitsButtonText}>
-            📋 Manage Habits ({habits.length})
-          </Text>
-        </TouchableOpacity>
-        {activeHabits.length !== habits.length && habits.length > 0 && (
-          <Text style={styles.filterText}>
-            Showing {activeHabits.length} of {habits.length} habits
-          </Text>
-        )}
-      </View>
-
-      {/* Daily View - Shows only selected date's habits */}
-      {activeHabits.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyIcon}>
-            {habits.length === 0 ? "📝" : "👀"}
-          </Text>
-          <Text style={styles.emptyText}>
-            {habits.length === 0 ? "No habits yet" : "No habits selected"}
-          </Text>
-          <Text style={styles.emptySubText}>
-            {habits.length === 0
-              ? 'Tap "Manage Habits" to add your first habit'
-              : 'Open "Manage Habits" to select which habits to display'}
-          </Text>
-          {habits.length === 0 && (
-            <TouchableOpacity
-              style={styles.emptyButton}
-              onPress={() => setShowHabitsModal(true)}
-            >
-              <Text style={styles.emptyButtonText}>Add Your First Habit</Text>
-            </TouchableOpacity>
+        {/* Habits Button */}
+        <View style={styles.toolbar}>
+          <TouchableOpacity
+            style={styles.habitsButton}
+            onPress={() => setShowHabitsModal(true)}
+          >
+            <Text style={styles.habitsButtonText}>📋 Manage Habits</Text>
+          </TouchableOpacity>
+          {activeHabits.length !== habits.length && habits.length > 0 && (
+            <View style={styles.filterBadge}>
+              <Text style={styles.filterText}>
+                {activeHabits.length}/{habits.length}
+              </Text>
+            </View>
           )}
         </View>
-      ) : (
-        <DailyView
-          selectedDate={selectedDate}
-          habits={activeHabits}
-          entries={entries}
-          onToggleHabit={handleToggleHabit}
+
+        {/* Daily View - Shows only selected date's habits */}
+        {activeHabits.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyIcon}>
+              {habits.length === 0 ? "📝" : "👀"}
+            </Text>
+            <Text style={styles.emptyText}>
+              {habits.length === 0 ? "No habits yet" : "No habits selected"}
+            </Text>
+            <Text style={styles.emptySubText}>
+              {habits.length === 0
+                ? 'Tap "Manage Habits" to add your first habit'
+                : 'Open "Manage Habits" to select which habits to display'}
+            </Text>
+            {habits.length === 0 && (
+              <TouchableOpacity
+                style={styles.emptyButton}
+                onPress={() => setShowHabitsModal(true)}
+              >
+                <Text style={styles.emptyButtonText}>Add Your First Habit</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        ) : (
+          <DailyView
+            selectedDate={selectedDate}
+            habits={activeHabits}
+            entries={entries}
+            onToggleHabit={handleToggleHabit}
+            onDeleteHabit={handleDeleteHabit}
+          />
+        )}
+
+        {/* Habits Modal */}
+        <HabitsModal
+          visible={showHabitsModal}
+          onClose={() => setShowHabitsModal(false)}
+          habits={habits}
+          activeHabitIds={uiState.activeHabitIds}
+          onAddHabit={handleAddHabit}
+          onRenameHabit={handleRenameHabit}
+          onDeleteHabit={handleDeleteHabit}
+          onToggleActiveHabit={handleToggleActiveHabit}
         />
-      )}
 
-      {/* Habits Modal */}
-      <HabitsModal
-        visible={showHabitsModal}
-        onClose={() => setShowHabitsModal(false)}
-        habits={habits}
-        activeHabitIds={uiState.activeHabitIds}
-        onAddHabit={handleAddHabit}
-        onRenameHabit={handleRenameHabit}
-        onDeleteHabit={handleDeleteHabit}
-        onToggleActiveHabit={handleToggleActiveHabit}
-      />
-
-      {/* Calendar Modal */}
-      <CalendarModal
-        visible={showCalendarModal}
-        selectedDate={selectedDate}
-        onClose={() => setShowCalendarModal(false)}
-        onSelectDate={handleDateChange}
-      />
-    </SafeAreaView>
+        {/* Calendar Modal */}
+        <CalendarModal
+          visible={showCalendarModal}
+          selectedDate={selectedDate}
+          onClose={() => setShowCalendarModal(false)}
+          onSelectDate={handleDateChange}
+        />
+      </SafeAreaView>
+    </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8f8f8",
+    backgroundColor: "#fafafa",
   },
   loadingContainer: {
     flex: 1,
@@ -185,32 +189,44 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     backgroundColor: "#fff",
     borderBottomWidth: 1,
-    borderBottomColor: "#e5e5e5",
+    borderBottomColor: "#f0f0f0",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
   habitsButton: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
     paddingVertical: 10,
-    backgroundColor: "#0066cc",
-    borderRadius: 8,
+    backgroundColor: "#10b981",
+    borderRadius: 10,
+    shadowColor: "#10b981",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   habitsButtonText: {
     color: "#fff",
     fontSize: 15,
     fontWeight: "600",
   },
+  filterBadge: {
+    backgroundColor: "#f0f0f0",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
   filterText: {
     fontSize: 13,
     color: "#666",
-    fontStyle: "italic",
+    fontWeight: "600",
   },
   emptyContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 32,
+    backgroundColor: "#fff",
   },
   emptyIcon: {
     fontSize: 64,
@@ -218,7 +234,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 22,
-    fontWeight: "600",
+    fontWeight: "700",
     color: "#333",
     marginBottom: 8,
   },
@@ -227,12 +243,18 @@ const styles = StyleSheet.create({
     color: "#666",
     textAlign: "center",
     marginBottom: 24,
+    lineHeight: 22,
   },
   emptyButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    backgroundColor: "#0066cc",
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    backgroundColor: "#10b981",
     borderRadius: 12,
+    shadowColor: "#10b981",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   emptyButtonText: {
     color: "#fff",

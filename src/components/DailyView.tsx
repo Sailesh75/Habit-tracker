@@ -1,12 +1,14 @@
 import { format } from "date-fns";
 import React from "react";
 import {
+  Alert,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { Swipeable } from "react-native-gesture-handler";
 import { CellStatus, Habit } from "../store/habitsStore";
 
 interface DailyViewProps {
@@ -14,6 +16,7 @@ interface DailyViewProps {
   habits: Habit[];
   entries: Record<string, CellStatus>;
   onToggleHabit: (dateKey: string, habitId: string) => void;
+  onDeleteHabit: (habitId: string) => void;
 }
 
 export function DailyView({
@@ -21,6 +24,7 @@ export function DailyView({
   habits,
   entries,
   onToggleHabit,
+  onDeleteHabit,
 }: DailyViewProps) {
   const dateKey = format(selectedDate, "yyyy-MM-dd");
 
@@ -44,6 +48,33 @@ export function DailyView({
       default:
         return { backgroundColor: "#f0f0f0", icon: "" }; // Empty gray
     }
+  };
+
+  const handleDelete = (habit: Habit) => {
+    Alert.alert(
+      "Delete Habit",
+      `Delete "${habit.name}"? All data will be lost.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => onDeleteHabit(habit.id),
+        },
+      ],
+    );
+  };
+
+  const renderRightActions = (habit: Habit) => {
+    return (
+      <TouchableOpacity
+        style={styles.deleteAction}
+        onPress={() => handleDelete(habit)}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.deleteActionText}>Delete</Text>
+      </TouchableOpacity>
+    );
   };
 
   if (habits.length === 0) {
@@ -87,24 +118,32 @@ export function DailyView({
           const checkboxStyle = getCheckboxStyle(status);
 
           return (
-            <TouchableOpacity
+            <Swipeable
               key={habit.id}
-              style={styles.habitRow}
-              onPress={() => onToggleHabit(dateKey, habit.id)}
-              activeOpacity={0.7}
+              renderRightActions={() => renderRightActions(habit)}
+              friction={2}
+              overshootRight={false}
             >
-              <Text style={styles.habitName}>{habit.name}</Text>
-              <View
-                style={[
-                  styles.checkbox,
-                  { backgroundColor: checkboxStyle.backgroundColor },
-                ]}
+              <TouchableOpacity
+                style={styles.habitRow}
+                onPress={() => onToggleHabit(dateKey, habit.id)}
+                activeOpacity={0.7}
               >
-                {checkboxStyle.icon ? (
-                  <Text style={styles.checkboxIcon}>{checkboxStyle.icon}</Text>
-                ) : null}
-              </View>
-            </TouchableOpacity>
+                <Text style={styles.habitName}>{habit.name}</Text>
+                <View
+                  style={[
+                    styles.checkbox,
+                    { backgroundColor: checkboxStyle.backgroundColor },
+                  ]}
+                >
+                  {checkboxStyle.icon ? (
+                    <Text style={styles.checkboxIcon}>
+                      {checkboxStyle.icon}
+                    </Text>
+                  ) : null}
+                </View>
+              </TouchableOpacity>
+            </Swipeable>
           );
         })}
       </ScrollView>
@@ -143,39 +182,57 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   habitsListContent: {
-    padding: 20,
+    padding: 16,
+    gap: 8,
   },
   habitRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    marginBottom: 12,
-    backgroundColor: "#f9f9f9",
-    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: "#fff",
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: "#e5e5e5",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   habitName: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "500",
     color: "#333",
     flex: 1,
   },
   checkbox: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 7,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
     borderColor: "#ddd",
   },
   checkboxIcon: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "700",
     color: "#fff",
+  },
+  deleteAction: {
+    backgroundColor: "#ef4444",
+    justifyContent: "center",
+    alignItems: "center",
+    width: 80,
+    borderRadius: 10,
+    marginLeft: 8,
+  },
+  deleteActionText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
   },
   emptyContainer: {
     flex: 1,

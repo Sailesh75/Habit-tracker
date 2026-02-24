@@ -46,6 +46,8 @@ export function HabitsModal({
     }
     onAddHabit(trimmed);
     setNewHabitName("");
+    // Auto-close modal after adding habit
+    setTimeout(() => onClose(), 300);
   };
 
   const startEditing = (habit: Habit) => {
@@ -101,8 +103,8 @@ export function HabitsModal({
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.title}>Manage Habits</Text>
-            <TouchableOpacity onPress={onClose}>
-              <Text style={styles.closeButton}>Done</Text>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <Text style={styles.closeButtonText}>✕</Text>
             </TouchableOpacity>
           </View>
 
@@ -111,13 +113,14 @@ export function HabitsModal({
             <TextInput
               style={styles.input}
               placeholder="New habit name..."
+              placeholderTextColor="#999"
               value={newHabitName}
               onChangeText={setNewHabitName}
               onSubmitEditing={handleAdd}
               returnKeyType="done"
             />
             <TouchableOpacity style={styles.addButton} onPress={handleAdd}>
-              <Text style={styles.addButtonText}>+</Text>
+              <Text style={styles.addButtonText}>Add</Text>
             </TouchableOpacity>
           </View>
 
@@ -230,21 +233,15 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     backgroundColor: "#fff",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: "85%",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: "90%",
     paddingTop: 8,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: -4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 16,
-      },
-    }),
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 20,
   },
   header: {
     flexDirection: "row",
@@ -253,56 +250,73 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#e5e5e5",
+    borderBottomColor: "#f0f0f0",
   },
   title: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "700",
     color: "#333",
   },
   closeButton: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#0066cc",
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#f0f0f0",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  closeButtonText: {
+    fontSize: 20,
+    color: "#666",
+    fontWeight: "400",
   },
   addSection: {
     flexDirection: "row",
     paddingHorizontal: 20,
     paddingVertical: 16,
-    gap: 12,
+    gap: 10,
+    backgroundColor: "#fafafa",
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
   },
   input: {
     flex: 1,
-    height: 48,
+    height: 44,
     borderWidth: 1,
-    borderColor: "#d0d0d0",
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    fontSize: 16,
-    backgroundColor: "#fafafa",
+    borderColor: "#e0e0e0",
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    fontSize: 15,
+    backgroundColor: "#fff",
+    color: "#333",
   },
   addButton: {
-    width: 48,
-    height: 48,
-    backgroundColor: "#0066cc",
-    borderRadius: 12,
+    paddingHorizontal: 20,
+    height: 44,
+    backgroundColor: "#10b981",
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
+    shadowColor: "#10b981",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   addButtonText: {
-    fontSize: 28,
+    fontSize: 15,
     color: "#fff",
-    fontWeight: "300",
+    fontWeight: "600",
   },
   listContainer: {
     flex: 1,
     paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingTop: 16,
     paddingBottom: 20,
   },
   sectionTitle: {
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: 13,
+    fontWeight: "700",
     color: "#666",
     textTransform: "uppercase",
     letterSpacing: 0.5,
@@ -311,7 +325,7 @@ const styles = StyleSheet.create({
   sectionSubtitle: {
     fontSize: 12,
     color: "#999",
-    marginBottom: 12,
+    marginBottom: 16,
   },
   emptyState: {
     alignItems: "center",
@@ -331,16 +345,16 @@ const styles = StyleSheet.create({
   habitItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
+    borderBottomColor: "#f5f5f5",
   },
   habitCheckbox: {
     marginRight: 12,
   },
   checkbox: {
-    width: 28,
-    height: 28,
+    width: 24,
+    height: 24,
     borderWidth: 2,
     borderColor: "#d0d0d0",
     borderRadius: 6,
@@ -348,12 +362,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   checkboxActive: {
-    backgroundColor: "#0066cc",
-    borderColor: "#0066cc",
+    backgroundColor: "#10b981",
+    borderColor: "#10b981",
   },
   checkmark: {
     color: "#fff",
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "700",
   },
   habitNameContainer: {
@@ -362,21 +376,24 @@ const styles = StyleSheet.create({
   habitName: {
     fontSize: 16,
     color: "#333",
+    fontWeight: "500",
   },
   habitNameInactive: {
-    color: "#999",
+    color: "#aaa",
     textDecorationLine: "line-through",
   },
   deleteButton: {
-    padding: 12,
-    marginLeft: 8,
-    minWidth: 44,
-    minHeight: 44,
+    padding: 10,
+    marginLeft: 4,
+    minWidth: 40,
+    minHeight: 40,
     alignItems: "center",
     justifyContent: "center",
+    borderRadius: 8,
+    backgroundColor: "#fee",
   },
   deleteButtonText: {
-    fontSize: 22,
+    fontSize: 20,
   },
   editingContainer: {
     flex: 1,
@@ -386,19 +403,19 @@ const styles = StyleSheet.create({
   },
   editInput: {
     flex: 1,
-    height: 40,
+    height: 36,
     borderWidth: 1,
-    borderColor: "#0066cc",
+    borderColor: "#10b981",
     borderRadius: 8,
     paddingHorizontal: 12,
-    fontSize: 16,
+    fontSize: 15,
     backgroundColor: "#fff",
   },
   saveButton: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 8,
-    backgroundColor: "#0066cc",
-    borderRadius: 6,
+    backgroundColor: "#10b981",
+    borderRadius: 8,
   },
   saveButtonText: {
     color: "#fff",

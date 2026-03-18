@@ -101,7 +101,7 @@ export default function DailyScreen() {
             style={styles.habitsButton}
             onPress={() => setShowHabitsModal(true)}
           >
-            <Text style={styles.habitsButtonText}>📋 Manage Habits</Text>
+            <Text style={styles.habitsButtonText}>📋 Add Habits</Text>
           </TouchableOpacity>
           {activeHabits.length !== habits.length && habits.length > 0 && (
             <View style={styles.filterBadge}>
@@ -123,8 +123,8 @@ export default function DailyScreen() {
             </Text>
             <Text style={styles.emptySubText}>
               {habits.length === 0
-                ? 'Tap "Manage Habits" to add your first habit'
-                : 'Open "Manage Habits" to select which habits to display'}
+                ? 'Tap "Add Habits" to add your first habit'
+                : 'Open "Add Habits" to select which habits to display'}
             </Text>
             {habits.length === 0 && (
               <TouchableOpacity

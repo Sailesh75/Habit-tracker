@@ -68,11 +68,19 @@ export const useHabitsStore = create<HabitsState>((set, get) => ({
         storage.loadUIState(),
       ]);
 
+      const today = new Date();
+
       // Sanitize activeHabitIds: remove IDs that don't exist in loaded habits
-      let sanitizedUIState = loadedUIState || {
-        selectedDate: new Date(),
-        activeHabitIds: [],
-      };
+      let sanitizedUIState = loadedUIState
+        ? {
+            ...loadedUIState,
+            // Always start app on today's date on launch.
+            selectedDate: today,
+          }
+        : {
+            selectedDate: today,
+            activeHabitIds: [],
+          };
 
       if (sanitizedUIState.activeHabitIds.length > 0) {
         const validHabitIds = loadedHabits.map((h) => h.id);

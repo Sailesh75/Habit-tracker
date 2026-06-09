@@ -1,4 +1,5 @@
 import { MonthlyOverview } from "@/src/components/MonthlyOverview";
+import { MonthlyStats } from "@/src/components/MonthlyStats";
 import { useHabitsStore } from "@/src/store/habitsStore";
 import { formatDateKey, getDaysInMonth } from "@/src/utils/dates";
 import { addMonths, format, subMonths } from "date-fns";
@@ -6,6 +7,7 @@ import React from "react";
 import {
   ActivityIndicator,
   SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -101,7 +103,7 @@ export default function StatsScreen() {
           <Text style={styles.navButtonText}>←</Text>
         </TouchableOpacity>
         <View style={styles.titleContainer}>
-          <Text style={styles.title}>Monthly Overview</Text>
+          <Text style={styles.title}>Statistics</Text>
           <Text style={styles.subtitle}>{monthLabel}</Text>
         </View>
         <TouchableOpacity style={styles.navButton} onPress={handleNextMonth}>
@@ -109,15 +111,32 @@ export default function StatsScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Monthly Grid Overview */}
-      <MonthlyOverview
-        year={year}
-        month={month}
-        habits={activeHabits}
-        daysInMonth={daysInMonth}
-        entries={entries}
-        formatDateKey={formatDateKey}
-      />
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Graphs & statistical feedback */}
+        <MonthlyStats
+          year={year}
+          month={month}
+          habits={activeHabits}
+          entries={entries}
+        />
+
+        {/* Detailed day-by-day grid */}
+        <Text style={styles.gridSectionTitle}>Detailed Grid</Text>
+        <View style={styles.gridContainer}>
+          <MonthlyOverview
+            year={year}
+            month={month}
+            habits={activeHabits}
+            daysInMonth={daysInMonth}
+            entries={entries}
+            formatDateKey={formatDateKey}
+          />
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -126,6 +145,29 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f8f8f8",
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 32,
+  },
+  gridSectionTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#333",
+    marginTop: 8,
+    marginHorizontal: 20,
+    marginBottom: 8,
+  },
+  gridContainer: {
+    height: 420,
+    marginHorizontal: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#eee",
+    overflow: "hidden",
+    backgroundColor: "#fff",
   },
   centerContainer: {
     flex: 1,
